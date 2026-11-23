@@ -1,0 +1,392 @@
+---
+import Glyph from '@/components/atoms/Glyph/Glyph.astro'
+import { manifesto } from '@/data/content'
+
+const marks: Record<number, { at: number; name: 'star' | 'cross' | 'globe' }> =
+  {
+    0: { at: 1, name: 'star' },
+    1: { at: 2, name: 'cross' },
+    2: { at: 0, name: 'globe' },
+  }
+const tape = Array.from({ length: 4 }, () => manifesto.tape).flat()
+---
+
+<section class="manifesto section" id="manifesto" data-bg="0.6">
+  <div class="manifesto__head mono">
+    <span>{manifesto.label}</span>
+    <span class="text-muted">EA—27 · SIGNAL 0x01</span>
+  </div>
+
+  <h2
+    class="manifesto__text display"
+    aria-label={manifesto.lines.map((l) => l.join(' ')).join(' ')}
+  >
+    {manifesto.lines.map((words, i) => (
+      <span class="manifesto__line" aria-hidden="true">
+        {words.map((word, j) => (
+          <>
+            {marks[i]?.at === j && (
+              <Glyph name={marks[i].name} class="manifesto__mark" />
+            )}
+            <span class="mask manifesto__mask">
+              <span class="manifesto__word">{word}</span>
+            </span>
+          </>
+        ))}
+        {marks[i]?.at === words.length && (
+          <Glyph name={marks[i].name} class="manifesto__mark" />
+        )}
+        {i === 3 && (
+          <span class="manifesto__note">
+            <span class="mono">{manifesto.note}</span>
+            <svg viewBox="0 0 320 60" fill="none" aria-hidden="true">
+              <path
+                class="manifesto__swash"
+                d="M4 40 C 40 10, 70 52, 104 30 S 160 8, 196 34 S 256 50, 280 22 L 314 14 M 296 4 L 314 14 L 300 30"
+                stroke="currentColor"
+                stroke-width="3"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+              />
+            </svg>
+          </span>
+        )}
+      </span>
+    ))}
+  </h2>
+
+  <ul class="manifesto__facts">
+    {manifesto.facts.map((fact) => (
+      <li class="manifesto__fact">
+        <span class="manifesto__value h-l">
+          <span data-count={fact.value}>0</span>
+          {fact.suffix}
+        </span>
+        <span class="mono text-muted">{fact.label}</span>
+      </li>
+    ))}
+  </ul>
+
+  <div class="manifesto__tapes" aria-hidden="true">
+    <div class="tape tape--red">
+      <div class="tape__track">
+        {tape.map((t) => (
+          <span>
+            {t}
+            <Glyph name="star" />
+          </span>
+        ))}
+      </div>
+    </div>
+    <div class="tape tape--black">
+      <div class="tape__track">
+        {tape.map((t) => (
+          <span>
+            {t}
+            <Glyph name="star" />
+          </span>
+        ))}
+      </div>
+    </div>
+  </div>
+</section>
+
+<script>
+  import { gsap, ScrollTrigger } from '@/scripts/gsap'
+
+  const section = document.querySelector<HTMLElement>('.manifesto')!
+  const lines = section.querySelectorAll<HTMLElement>('.manifesto__line')
+
+  lines.forEach((line) => {
+    const words = line.querySelectorAll<HTMLElement>('.manifesto__word')
+    gsap.fromTo(
+      words,
+      { yPercent: 105, fontVariationSettings: "'wdth' 62" },
+      {
+        yPercent: 0,
+        fontVariationSettings: "'wdth' 125",
+        ease: 'power2.out',
+        stagger: 0.12,
+        scrollTrigger: {
+          trigger: line,
+          start: 'top 92%',
+          end: 'top 45%',
+          scrub: 0.6,
+        },
+      },
+    )
+    gsap.fromTo(
+      line,
+      { '--line': 0 },
+      {
+        '--line': 1,
+        ease: 'none',
+        scrollTrigger: {
+          trigger: line,
+          start: 'top 95%',
+          end: 'top 60%',
+          scrub: true,
+        },
+      },
+    )
+  })
+
+  gsap.to(section.querySelectorAll('.manifesto__mark'), {
+    rotate: 360,
+    duration: 9,
+    ease: 'none',
+    repeat: -1,
+  })
+
+  const swash = section.querySelector<SVGPathElement>('.manifesto__swash')!
+  const len = swash.getTotalLength()
+  gsap.set(swash, { strokeDasharray: len, strokeDashoffset: len })
+  gsap.to(swash, {
+    strokeDashoffset: 0,
+    duration: 1.4,
+    ease: 'power2.inOut',
+    scrollTrigger: { trigger: swash, start: 'top 80%' },
+  })
+
+  section.querySelectorAll<HTMLElement>('[data-count]').forEach((el) => {
+    const target = Number(el.dataset.count)
+    const v = { n: 0 }
+    gsap.to(v, {
+      n: target,
+      duration: 1.6,
+      ease: 'power3.out',
+      scrollTrigger: { trigger: el, start: 'top 90%' },
+      onUpdate: () => {
+        el.textContent = String(Math.round(v.n))
+      },
+    })
+  })
+
+  // tapes: endless marquee, sped up by scroll velocity
+  const tracks = [...section.querySelectorAll<HTMLElement>('.tape__track')]
+  const loops = tracks.map((track, i) => {
+    const dir = i === 0 ? -1 : 1
+    return gsap.fromTo(
+      track,
+      { xPercent: dir < 0 ? 0 : -50 },
+      { xPercent: dir < 0 ? -50 : 0, duration: 28, ease: 'none', repeat: -1 },
+    )
+  })
+  let boost = 0
+  ScrollTrigger.create({
+    trigger: section,
+    start: 'top bottom',
+    end: 'bottom top',
+    onUpdate: (self) => {
+      boost = Math.min(Math.abs(self.getVelocity()) / 300, 8)
+    },
+  })
+  gsap.ticker.add(() => {
+    boost *= 0.92
+    loops.forEach((l) => l.timeScale(1 + boost))
+  })
+</script>
+
+<style lang="scss">
+  .manifesto {
+    padding-top: rem(180);
+    padding-bottom: rem(320);
+    z-index: 1;
+
+    @include mobile {
+      padding-top: rem(120);
+      padding-bottom: rem(220);
+    }
+  }
+
+  .manifesto__head {
+    display: flex;
+    justify-content: space-between;
+    margin-bottom: rem(40);
+  }
+
+  .manifesto__text {
+    display: flex;
+    flex-direction: column;
+    color: var(--red);
+    font-size: rem(158);
+
+    @include mobile {
+      font-size: rem(46);
+    }
+  }
+
+  .manifesto__line {
+    --line: 0;
+    position: relative;
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 0 0.22em;
+    padding: rem(14) 0 rem(6);
+
+    &::before {
+      content: '';
+      position: absolute;
+      left: 0;
+      right: 0;
+      top: 0;
+      height: 1px;
+      background: var(--line);
+      transform: scaleX(var(--line));
+      transform-origin: left;
+    }
+
+    &:nth-child(2) {
+      padding-left: 1.1em;
+    }
+
+    &:nth-child(3) {
+      justify-content: flex-end;
+    }
+
+    &:nth-child(4) {
+      padding-left: 0.5em;
+    }
+  }
+
+  .manifesto__mask {
+    padding-top: 0.04em;
+  }
+
+  .manifesto__word {
+    display: inline-block;
+    font-variation-settings: 'wdth' 125;
+  }
+
+  .manifesto__mark {
+    font-size: 0.42em;
+    color: var(--ink);
+  }
+
+  .manifesto__note {
+    position: absolute;
+    right: 0;
+    bottom: -0.55em;
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+    gap: rem(4);
+    color: var(--ink);
+    transform: rotate(-4deg);
+
+    .mono {
+      font-size: rem(15);
+      font-style: italic;
+      text-transform: none;
+      letter-spacing: 0;
+    }
+
+    svg {
+      width: rem(240);
+      height: auto;
+    }
+
+    @include mobile {
+      bottom: -1.2em;
+
+      svg {
+        width: rem(140);
+      }
+    }
+  }
+
+  .manifesto__facts {
+    list-style: none;
+    padding: 0;
+    margin-top: rem(140);
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    border-top: 1px solid var(--line);
+
+    @include mobile {
+      grid-template-columns: repeat(2, 1fr);
+      margin-top: rem(90);
+    }
+  }
+
+  .manifesto__fact {
+    display: flex;
+    flex-direction: column;
+    gap: rem(10);
+    padding: rem(24) rem(20) 0 0;
+
+    & + & {
+      border-left: 1px solid var(--line);
+      padding-left: rem(20);
+    }
+  }
+
+  .manifesto__value {
+    color: var(--ink);
+  }
+
+  .manifesto__tapes {
+    position: absolute;
+    left: 0;
+    right: 0;
+    bottom: rem(90);
+    height: rem(160);
+    pointer-events: none;
+
+    @include mobile {
+      bottom: rem(60);
+    }
+  }
+
+  .tape {
+    position: absolute;
+    left: -10%;
+    right: -10%;
+    top: 50%;
+    overflow: hidden;
+    padding: rem(14) 0;
+    font-family: var(--font-display);
+    font-weight: 800;
+    font-stretch: 125%;
+    font-size: rem(22);
+    text-transform: uppercase;
+    white-space: nowrap;
+
+    &--red {
+      background: var(--red);
+      color: var(--black);
+      transform: translateY(-50%) rotate(-5deg);
+      z-index: 2;
+    }
+
+    &--black {
+      background: var(--black);
+      color: var(--red);
+      border-top: 1px solid var(--red);
+      border-bottom: 1px solid var(--red);
+      transform: translateY(-50%) rotate(4deg);
+    }
+
+    @include mobile {
+      font-size: rem(14);
+      padding: rem(8) 0;
+    }
+  }
+
+  .tape__track {
+    display: inline-flex;
+    width: max-content;
+
+    span {
+      display: inline-flex;
+      align-items: center;
+      gap: rem(24);
+      padding-right: rem(24);
+    }
+
+    :global(.glyph) {
+      font-size: 0.8em;
+    }
+  }
+</style>

@@ -1,0 +1,172 @@
+<div class="preloader" aria-hidden="true">
+  <canvas class="preloader__sphere"></canvas>
+  <div class="preloader__hud mono">
+    <span>EVERAFTER / VOL. 01</span>
+    <span>LOADING WORLD</span>
+  </div>
+  <div class="preloader__count">
+    <span class="preloader__num">000</span>
+  </div>
+  <div class="preloader__bar">
+    <span></span>
+  </div>
+</div>
+
+<script>
+  import { gsap } from '@/scripts/gsap'
+  import { createSphere } from '@/scripts/sphere'
+
+  const root = document.querySelector<HTMLElement>('.preloader')!
+  const canvas = root.querySelector<HTMLCanvasElement>('.preloader__sphere')!
+  const num = root.querySelector<HTMLElement>('.preloader__num')!
+  const bar = root.querySelector<HTMLElement>('.preloader__bar span')!
+  const sphere = createSphere(canvas)
+  const counter = { v: 0 }
+
+  gsap.fromTo(
+    canvas,
+    { scale: 0.4, autoAlpha: 0 },
+    { scale: 1, autoAlpha: 1, duration: 1.2, ease: 'expo.out' },
+  )
+
+  const finish = () => {
+    // fly the sphere onto the hero orb, flash, and hand over
+    const orb = document.querySelector<HTMLElement>('.hero__orb')
+    const c = canvas.getBoundingClientRect()
+    let x = 0
+    let y = 0
+    let scale = 1.6
+    if (orb) {
+      const o = orb.getBoundingClientRect()
+      x = o.left + o.width / 2 - (c.left + c.width / 2)
+      y = o.top + o.height / 2 - (c.top + c.height / 2)
+      // sphere radius is 0.62 of the canvas half-size; the orb has no transform scale yet worth counting
+      scale = orb.offsetWidth / (c.width * 0.62)
+    }
+    const tl = gsap.timeline({
+      onComplete: () => {
+        sphere?.stop()
+        root.remove()
+      },
+    })
+    tl.to(
+      root.querySelectorAll(
+        '.preloader__count, .preloader__hud, .preloader__bar',
+      ),
+      {
+        autoAlpha: 0,
+        y: -10,
+        duration: 0.35,
+        ease: 'power2.in',
+      },
+    )
+    if (sphere) {
+      tl.to(
+        sphere.state,
+        { flash: 0.9, duration: 0.18, ease: 'power2.out' },
+        0.1,
+      ).to(sphere.state, {
+        flash: 0,
+        duration: 0.8,
+        ease: 'power2.out',
+      })
+    }
+    tl.to(canvas, { x, y, scale, duration: 1.1, ease: 'expo.inOut' }, 0.2)
+      .add(() => {
+        document.body.classList.remove('is-loading')
+        window.dispatchEvent(new CustomEvent('app:ready'))
+      }, 0.75)
+      .to(
+        root,
+        {
+          backgroundColor: 'rgba(10,10,10,0)',
+          duration: 0.7,
+          ease: 'power2.inOut',
+        },
+        0.6,
+      )
+      .to(canvas, { autoAlpha: 0, duration: 0.6, ease: 'power2.in' }, 1.05)
+  }
+
+  gsap.to(counter, {
+    v: 100,
+    duration: 2.4,
+    ease: 'power2.inOut',
+    onUpdate: () => {
+      num.textContent = String(Math.round(counter.v)).padStart(3, '0')
+      bar.style.transform = `scaleX(${counter.v / 100})`
+      if (sphere) sphere.state.progress = counter.v / 100
+    },
+    onComplete: () => {
+      document.fonts.ready.then(finish)
+    },
+  })
+</script>
+
+<style lang="scss">
+  .preloader {
+    position: fixed;
+    inset: 0;
+    z-index: 80;
+    background: var(--bg);
+    color: var(--ink);
+  }
+
+  .preloader__sphere {
+    position: absolute;
+    left: 50%;
+    top: 50%;
+    width: rem(680);
+    height: rem(680);
+    margin: rem(-340) 0 0 rem(-340);
+    display: block;
+
+    @include mobile {
+      width: rem(340);
+      height: rem(340);
+      margin: rem(-170) 0 0 rem(-170);
+    }
+  }
+
+  .preloader__hud {
+    position: absolute;
+    top: var(--gutter);
+    left: var(--gutter);
+    right: var(--gutter);
+    display: flex;
+    justify-content: space-between;
+  }
+
+  .preloader__count {
+    position: absolute;
+    left: var(--gutter);
+    bottom: rem(48);
+    font-family: var(--font-display);
+    font-weight: 800;
+    font-stretch: 125%;
+    font-size: rem(220);
+    line-height: 0.8;
+    color: var(--ink);
+
+    @include mobile {
+      font-size: rem(96);
+    }
+  }
+
+  .preloader__bar {
+    position: absolute;
+    left: var(--gutter);
+    right: var(--gutter);
+    bottom: var(--gutter);
+    height: 1px;
+    background: var(--line);
+
+    span {
+      display: block;
+      height: 100%;
+      background: var(--red);
+      transform-origin: left;
+      transform: scaleX(0);
+    }
+  }
+</style>

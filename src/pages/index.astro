@@ -1,0 +1,48 @@
+---
+import Layout from '@/layouts/Layout.astro'
+import Header from '@/components/sections/global/Header.astro'
+import Hero from '@/components/sections/home/Hero.astro'
+import Manifesto from '@/components/sections/home/Manifesto.astro'
+import Lineup from '@/components/sections/home/Lineup.astro'
+import Stages from '@/components/sections/home/Stages.astro'
+import Tickets from '@/components/sections/home/Tickets.astro'
+---
+
+<Layout>
+  <Header />
+  <main>
+    <Hero />
+    <Manifesto />
+    <Lineup />
+    <Stages />
+    <Tickets />
+  </main>
+</Layout>
+
+<script>
+  import { initSmooth } from '@/scripts/smooth'
+  import { ScrollTrigger } from '@/scripts/gsap'
+
+  // always start from the top: no restored (or sideways) scroll before the preloader
+  if ('scrollRestoration' in history) history.scrollRestoration = 'manual'
+  window.scrollTo(0, 0)
+  initSmooth()
+
+  // each section tells the smoke backdrop how strong to burn
+  document.querySelectorAll<HTMLElement>('[data-bg]').forEach((section) => {
+    ScrollTrigger.create({
+      trigger: section,
+      start: 'top 50%',
+      end: 'bottom 50%',
+      onToggle: (self) => {
+        if (self.isActive) {
+          window.dispatchEvent(
+            new CustomEvent('bg:intensity', {
+              detail: Number(section.dataset.bg),
+            }),
+          )
+        }
+      },
+    })
+  })
+</script>

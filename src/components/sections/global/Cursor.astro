@@ -1,0 +1,95 @@
+---
+import Glyph from '@/components/atoms/Glyph/Glyph.astro'
+---
+
+<div class="cursor" aria-hidden="true">
+  <div class="cursor__ring">
+    <Glyph name="star" class="cursor__star" />
+  </div>
+  <span class="cursor__label mono"></span>
+</div>
+
+<script>
+  import { gsap } from '@/scripts/gsap'
+
+  const el = document.querySelector<HTMLElement>('.cursor')
+  if (el && matchMedia('(hover: hover) and (pointer: fine)').matches) {
+    const label = el.querySelector<HTMLElement>('.cursor__label')!
+    const x = gsap.quickTo(el, 'x', { duration: 0.35, ease: 'power3' })
+    const y = gsap.quickTo(el, 'y', { duration: 0.35, ease: 'power3' })
+    window.addEventListener('pointermove', (e) => {
+      el.classList.add('is-visible')
+      x(e.clientX)
+      y(e.clientY)
+      const target = (e.target as HTMLElement).closest<HTMLElement>(
+        'a, button, [data-cursor]',
+      )
+      el.classList.toggle('is-hover', !!target)
+      label.textContent = target?.dataset.cursor ?? ''
+    })
+    document.addEventListener('pointerleave', () =>
+      el.classList.remove('is-visible'),
+    )
+  }
+</script>
+
+<style lang="scss">
+  .cursor {
+    position: fixed;
+    left: 0;
+    top: 0;
+    z-index: 100;
+    pointer-events: none;
+    opacity: 0;
+    transition: opacity 0.3s;
+    mix-blend-mode: difference;
+
+    &.is-visible {
+      opacity: 1;
+    }
+  }
+
+  .cursor__ring {
+    position: absolute;
+    left: rem(-18);
+    top: rem(-18);
+    width: rem(36);
+    height: rem(36);
+    border: 1px solid var(--ink);
+    border-radius: 50%;
+    display: grid;
+    place-items: center;
+    transition:
+      transform 0.45s var(--ease-out),
+      background-color 0.3s;
+  }
+
+  .cursor__star {
+    font-size: rem(12);
+    color: var(--ink);
+    animation: spin 6s linear infinite;
+  }
+
+  .cursor__label {
+    position: absolute;
+    left: rem(30);
+    top: rem(-6);
+    white-space: nowrap;
+    color: var(--ink);
+  }
+
+  .cursor.is-hover .cursor__ring {
+    transform: scale(1.7);
+    background: var(--ink);
+
+    .cursor__star {
+      color: var(--black);
+    }
+  }
+
+  @keyframes spin {
+    to {
+      transform: rotate(360deg);
+    }
+  }
+</style>

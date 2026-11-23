@@ -1,0 +1,123 @@
+---
+import Glyph from '@/components/atoms/Glyph/Glyph.astro'
+import { nav, hero } from '@/data/content'
+---
+
+<header class="header">
+  <a class="header__logo" href="#top" aria-label="EVERAFTER, back to top">
+    EVERAFTER
+    <Glyph name="star" class="header__star" />
+  </a>
+  <nav class="header__nav mono" aria-label="Main">
+    {nav.map((item, i) => (
+      <a href={item.href}>
+        <span class="header__idx">0{i + 1}</span>
+        {item.label}
+      </a>
+    ))}
+  </nav>
+  <a class="header__cta mono" href="#tickets" data-cursor="Enter">
+    <Glyph name="globe" class="header__globe" />
+    {hero.cta}
+  </a>
+</header>
+
+<style lang="scss">
+  .header {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    z-index: 50;
+    display: grid;
+    grid-template-columns: 1fr auto 1fr;
+    align-items: center;
+    padding: rem(22) var(--gutter);
+    mix-blend-mode: difference;
+    color: var(--ink);
+
+    @include mobile {
+      grid-template-columns: 1fr auto;
+    }
+  }
+
+  .header__logo {
+    display: inline-flex;
+    align-items: center;
+    gap: rem(6);
+    font-family: var(--font-display);
+    font-weight: 800;
+    font-stretch: 125%;
+    font-size: rem(18);
+    letter-spacing: -0.02em;
+  }
+
+  .header__star {
+    font-size: rem(13);
+    animation: spin 8s linear infinite;
+  }
+
+  .header__nav {
+    display: flex;
+    gap: rem(36);
+
+    a {
+      position: relative;
+      display: inline-flex;
+      gap: rem(6);
+
+      &::after {
+        content: '';
+        position: absolute;
+        left: 0;
+        right: 0;
+        bottom: rem(-4);
+        height: 1px;
+        background: currentColor;
+        transform: scaleX(0);
+        transform-origin: right;
+        transition: transform 0.5s var(--ease-out);
+      }
+
+      &:hover::after {
+        transform: scaleX(1);
+        transform-origin: left;
+      }
+    }
+
+    @include mobile {
+      display: none;
+    }
+  }
+
+  .header__idx {
+    opacity: 0.5;
+  }
+
+  .header__cta {
+    justify-self: end;
+    display: inline-flex;
+    align-items: center;
+    gap: rem(8);
+    padding: rem(10) rem(16);
+    border: 1px solid currentColor;
+    transition:
+      background-color 0.3s,
+      color 0.3s;
+
+    &:hover {
+      background: var(--ink);
+      color: var(--black);
+    }
+  }
+
+  .header__globe {
+    font-size: rem(16);
+  }
+
+  @keyframes spin {
+    to {
+      transform: rotate(360deg);
+    }
+  }
+</style>

@@ -1,0 +1,445 @@
+---
+import { Image } from 'astro:assets'
+import Glyph from '@/components/atoms/Glyph/Glyph.astro'
+import heroCrowd from '@/assets/images/hero-crowd.jpg'
+import { hero } from '@/data/content'
+---
+
+<section class="hero section" id="top" data-bg="1">
+  <div class="hero__orb-wrap" aria-hidden="true">
+    <div class="hero__orb">
+      <div class="hero__glow"></div>
+      <div class="hero__photo duotone">
+        <Image
+          src={heroCrowd}
+          alt=""
+          widths={[800, 1400, 2000]}
+          sizes="60vw"
+          loading="eager"
+        />
+      </div>
+      <div class="hero__ring"></div>
+    </div>
+  </div>
+
+  <div class="hero__mark">
+    <h1 class="sr-only">{hero.wordmark}</h1>
+    <canvas class="hero__canvas" data-wordmark={hero.wordmark}></canvas>
+  </div>
+
+  <div class="hero__ui">
+    <div class="hero__hud hero__hud--tl mono" data-hud>
+      <span class="hero__tag">{hero.dates}</span>
+      <span class="text-muted">{hero.place}</span>
+    </div>
+    <div class="hero__hud hero__hud--tr mono" data-hud>
+      <span>{hero.coords}</span>
+      <span class="text-muted">{hero.volume}</span>
+    </div>
+    <div class="hero__side mono text-muted" data-hud>
+      <span>[ 48.37 / 24.43 ]</span>
+      <span>EA—27</span>
+    </div>
+
+    <div class="hero__bottom">
+      <p class="hero__tagline h-m">
+        {hero.tagline.map((line) => (
+          <span class="mask">
+            <span>{line}</span>
+          </span>
+        ))}
+      </p>
+      <div class="hero__right">
+        <div class="hero__count mono" data-hud>
+          <span class="text-muted">Gates open in</span>
+          <span class="hero__timer" data-opens={JSON.stringify(hero.opensIn)}>
+            24 : 17 : 30 : 00
+          </span>
+          <span class="hero__units text-muted">days · hrs · min · sec</span>
+        </div>
+        <a class="hero__cta" href="#tickets" data-cursor="Enter" data-hud>
+          <span>{hero.cta}</span>
+          <Glyph name="arrow" />
+        </a>
+      </div>
+    </div>
+
+    <div class="hero__scroll mono" data-hud>
+      <Glyph name="arrow-down" />
+      <span>Scroll to enter</span>
+    </div>
+  </div>
+</section>
+
+<script>
+  import { gsap, ScrollTrigger } from '@/scripts/gsap'
+  import { createWordmark } from '@/scripts/wordmark'
+  import { scramble } from '@/scripts/scramble'
+
+  const section = document.querySelector<HTMLElement>('.hero')!
+  const canvas = section.querySelector<HTMLCanvasElement>('.hero__canvas')!
+  const mark = createWordmark(canvas, canvas.dataset.wordmark!, {})
+  const orb = section.querySelector<HTMLElement>('.hero__orb')!
+  const huds = section.querySelectorAll<HTMLElement>('[data-hud]')
+  const lines = section.querySelectorAll<HTMLElement>(
+    '.hero__tagline .mask > span',
+  )
+  const timer = section.querySelector<HTMLElement>('.hero__timer')!
+
+  gsap.set(orb, { scale: 0.85, rotate: -20, autoAlpha: 0 })
+  gsap.set(lines, { yPercent: 110 })
+  gsap.set(huds, { autoAlpha: 0 })
+
+  const intro = () => {
+    const tl = gsap.timeline()
+    if (mark)
+      tl.to(mark.state, { intro: 1, duration: 1.8, ease: 'power3.out' }, 0)
+    tl.to(
+      orb,
+      { scale: 1, rotate: 0, autoAlpha: 1, duration: 1.6, ease: 'expo.out' },
+      0.1,
+    )
+      .to(
+        lines,
+        { yPercent: 0, duration: 1.1, ease: 'expo.out', stagger: 0.08 },
+        0.6,
+      )
+      .to(huds, { autoAlpha: 1, duration: 0.01, stagger: 0.07 }, 0.8)
+      .add(() => {
+        section
+          .querySelectorAll<HTMLElement>('.hero__hud span')
+          .forEach((s) => scramble(s, s.textContent ?? '', 900))
+        mark?.glitch(1)
+      }, 0.8)
+  }
+  window.addEventListener('app:ready', intro, { once: true })
+
+  // countdown
+  const offset = JSON.parse(timer.dataset.opens!) as {
+    days: number
+    hours: number
+    minutes: number
+  }
+  const opens =
+    Date.now() +
+    ((offset.days * 24 + offset.hours) * 60 + offset.minutes) * 60_000
+  const pad = (n: number, l = 2) => String(Math.max(0, n)).padStart(l, '0')
+  const tick = () => {
+    let s = Math.floor((opens - Date.now()) / 1000)
+    const d = Math.floor(s / 86400)
+    s -= d * 86400
+    const h = Math.floor(s / 3600)
+    s -= h * 3600
+    const m = Math.floor(s / 60)
+    s -= m * 60
+    timer.textContent = `${pad(d)} : ${pad(h)} : ${pad(m)} : ${pad(s)}`
+  }
+  tick()
+  setInterval(tick, 1000)
+
+  // scroll out: wordmark rises and glitches with scroll speed, orb sinks
+  ScrollTrigger.create({
+    trigger: section,
+    start: 'top top',
+    end: 'bottom top',
+    scrub: true,
+    onUpdate: (self) => {
+      if (mark) mark.glitch(Math.min(Math.abs(self.getVelocity()) / 2500, 1))
+    },
+    animation: gsap
+      .timeline()
+      .to('.hero__mark', { yPercent: -60, ease: 'none' }, 0)
+      .to('.hero__orb-wrap', { yPercent: 35, scale: 0.8, ease: 'none' }, 0)
+      .to('.hero__ui', { opacity: 0, ease: 'none', duration: 0.4 }, 0),
+  })
+
+  // the orb breathes
+  gsap.to('.hero__photo', {
+    scale: 1.08,
+    duration: 3.2,
+    ease: 'sine.inOut',
+    yoyo: true,
+    repeat: -1,
+  })
+  gsap.to('.hero__glow', {
+    opacity: 0.6,
+    scale: 1.12,
+    duration: 2.4,
+    ease: 'sine.inOut',
+    yoyo: true,
+    repeat: -1,
+  })
+</script>
+
+<style lang="scss">
+  .sr-only {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip: rect(0 0 0 0);
+  }
+
+  .hero {
+    height: 100vh;
+    min-height: rem(760);
+    overflow: hidden;
+    z-index: 1;
+
+    @include mobile {
+      min-height: 100svh;
+    }
+  }
+
+  .hero__orb-wrap,
+  .hero__ui {
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+  }
+
+  .hero__ui {
+    z-index: 3;
+
+    > * {
+      pointer-events: auto;
+    }
+  }
+
+  .hero__orb {
+    position: absolute;
+    left: 50%;
+    top: 50%;
+    width: rem(560);
+    height: rem(560);
+    margin: rem(-300) 0 0 rem(-280);
+    pointer-events: none;
+
+    @include mobile {
+      width: rem(300);
+      height: rem(300);
+      margin: rem(-170) 0 0 rem(-150);
+    }
+  }
+
+  .hero__glow {
+    position: absolute;
+    inset: -18%;
+    border-radius: 50%;
+    background: radial-gradient(
+      circle,
+      rgba(255, 61, 139, 0.55) 0%,
+      rgba(232, 50, 30, 0.35) 38%,
+      transparent 68%
+    );
+    filter: blur(rem(30));
+    opacity: 0.9;
+  }
+
+  .hero__photo {
+    position: absolute;
+    inset: 0;
+    border-radius: 50%;
+    overflow: hidden;
+  }
+
+  .hero__ring {
+    position: absolute;
+    inset: rem(-22);
+    border-radius: 50%;
+    border: 1px solid rgba(242, 239, 234, 0.25);
+
+    &::before {
+      content: '';
+      position: absolute;
+      inset: rem(-28);
+      border-radius: 50%;
+      border: 1px dashed rgba(242, 239, 234, 0.14);
+      animation: spin 40s linear infinite;
+    }
+  }
+
+  .hero__mark {
+    position: absolute;
+    left: var(--gutter);
+    right: var(--gutter);
+    top: 50%;
+    transform: translateY(-58%);
+    z-index: 2;
+  }
+
+  .hero__canvas {
+    display: block;
+    width: 100%;
+    height: rem(290);
+
+    @include mobile {
+      height: rem(90);
+    }
+  }
+
+  .hero__hud {
+    position: absolute;
+    top: rem(96);
+    display: flex;
+    flex-direction: column;
+    gap: rem(4);
+    z-index: 3;
+
+    &--tl {
+      left: var(--gutter);
+    }
+
+    &--tr {
+      right: var(--gutter);
+      text-align: right;
+    }
+  }
+
+  .hero__tag {
+    color: var(--red);
+  }
+
+  .hero__side {
+    position: absolute;
+    left: var(--gutter);
+    top: 50%;
+    display: flex;
+    gap: rem(24);
+    transform-origin: left top;
+    transform: rotate(-90deg) translate(-50%, rem(-4));
+    z-index: 3;
+
+    @include mobile {
+      display: none;
+    }
+  }
+
+  .hero__bottom {
+    position: absolute;
+    left: var(--gutter);
+    right: var(--gutter);
+    bottom: rem(40);
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-end;
+    z-index: 3;
+
+    @include mobile {
+      flex-direction: column;
+      align-items: flex-start;
+      gap: rem(24);
+      bottom: rem(28);
+    }
+  }
+
+  .hero__tagline {
+    font-size: rem(30);
+  }
+
+  .hero__right {
+    display: flex;
+    align-items: flex-end;
+    gap: rem(40);
+
+    @include mobile {
+      width: 100%;
+      justify-content: space-between;
+      gap: rem(12);
+    }
+  }
+
+  .hero__count {
+    display: flex;
+    flex-direction: column;
+    gap: rem(6);
+  }
+
+  .hero__timer {
+    font-size: rem(22);
+    color: var(--ink);
+    letter-spacing: 0.02em;
+
+    @include mobile {
+      font-size: rem(14);
+    }
+  }
+
+  .hero__units {
+    font-size: rem(10);
+  }
+
+  .hero__cta {
+    display: inline-flex;
+    align-items: center;
+    gap: rem(14);
+    padding: rem(22) rem(28);
+    background: var(--red);
+    color: var(--ink);
+    font-family: var(--font-display);
+    font-weight: 800;
+    font-stretch: 125%;
+    font-size: rem(18);
+    text-transform: uppercase;
+    clip-path: polygon(
+      0 0,
+      100% 0,
+      100% calc(100% - #{rem(14)}),
+      calc(100% - #{rem(14)}) 100%,
+      0 100%
+    );
+    transition:
+      background-color 0.3s,
+      color 0.3s;
+
+    :global(.glyph) {
+      transition: transform 0.5s var(--ease-out);
+    }
+
+    &:hover {
+      background: var(--ink);
+      color: var(--black);
+
+      :global(.glyph) {
+        transform: rotate(45deg);
+      }
+    }
+
+    @include mobile {
+      padding: rem(14) rem(16);
+      font-size: rem(13);
+    }
+  }
+
+  .hero__scroll {
+    position: absolute;
+    left: 50%;
+    bottom: rem(40);
+    transform: translateX(-50%);
+    display: flex;
+    align-items: center;
+    gap: rem(8);
+    z-index: 3;
+    color: var(--muted);
+
+    :global(.glyph) {
+      animation: bob 1.6s var(--ease-in-out) infinite;
+    }
+
+    @include mobile {
+      display: none;
+    }
+  }
+
+  @keyframes bob {
+    50% {
+      transform: translateY(rem(5));
+    }
+  }
+
+  @keyframes spin {
+    to {
+      transform: rotate(360deg);
+    }
+  }
+</style>

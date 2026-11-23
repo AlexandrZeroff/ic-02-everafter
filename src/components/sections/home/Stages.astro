@@ -1,0 +1,443 @@
+---
+import { getImage } from 'astro:assets'
+import Glyph from '@/components/atoms/Glyph/Glyph.astro'
+import { stages } from '@/data/content'
+
+const items = await Promise.all(
+  stages.items.map(async (item) => ({
+    ...item,
+    src: (
+      await getImage({
+        src: item.image,
+        width: 900,
+        format: 'webp',
+        quality: 78,
+      })
+    ).src,
+  })),
+)
+---
+
+<section class="stages section" id="stages" data-bg="0.5">
+  <div class="stages__marquee" aria-hidden="true">
+    <span class="stages__big display">
+      {stages.title}
+      <Glyph name="globe" />
+      {stages.title}
+      <Glyph name="globe" />
+    </span>
+  </div>
+
+  <div class="stages__head">
+    <span class="mono">{stages.label}</span>
+    <h2 class="sr-only">{stages.title}</h2>
+    <div class="stages__meta mono text-muted">
+      <Glyph name="globe" class="stages__globe" />
+      {stages.meta.map((m) => (
+        <span>{m}</span>
+      ))}
+    </div>
+  </div>
+
+  <div class="stages__table" role="table" aria-label="Stages">
+    <div class="stages__row stages__row--head mono text-muted" role="row">
+      {stages.columns.map((c) => (
+        <span role="columnheader">{c}</span>
+      ))}
+    </div>
+    {items.map((item, i) => (
+      <div
+        class="stages__row"
+        role="row"
+        data-index={i}
+        data-src={item.src}
+        data-cursor="Explore"
+      >
+        <span class="mono" role="cell">
+          {item.no}
+        </span>
+        <span class="stages__name" role="cell">
+          {item.name}
+        </span>
+        <span class="stages__sound" role="cell">
+          {item.sound}
+        </span>
+        <span class="mono stages__cap" role="cell">
+          {item.capacity}
+          <Glyph name="arrow" class="stages__arrow" />
+        </span>
+      </div>
+    ))}
+  </div>
+
+  <div class="stages__preview" aria-hidden="true">
+    <div class="stages__layer stages__layer--a">
+      <img alt="" />
+    </div>
+    <div class="stages__layer stages__layer--b">
+      <img alt="" />
+    </div>
+    <div class="stages__layer duotone">
+      <img alt="" />
+    </div>
+    <span class="stages__preview-label mono"></span>
+  </div>
+</section>
+
+<script>
+  import { gsap } from '@/scripts/gsap'
+  import { reelMode } from '@/scripts/webgl'
+
+  const section = document.querySelector<HTMLElement>('.stages')!
+  const rows = [
+    ...section.querySelectorAll<HTMLElement>('.stages__row[data-index]'),
+  ]
+  const preview = section.querySelector<HTMLElement>('.stages__preview')!
+  const imgs = [...preview.querySelectorAll<HTMLImageElement>('img')]
+  const label = preview.querySelector<HTMLElement>('.stages__preview-label')!
+  const layerA = preview.querySelector<HTMLElement>('.stages__layer--a')!
+  const layerB = preview.querySelector<HTMLElement>('.stages__layer--b')!
+
+  // preload
+  rows.forEach((r) => {
+    const i = new Image()
+    i.src = r.dataset.src!
+  })
+
+  const px = gsap.quickTo(preview, 'x', { duration: 0.6, ease: 'power3' })
+  const py = gsap.quickTo(preview, 'y', { duration: 0.6, ease: 'power3' })
+  const rot = gsap.quickTo(preview, 'rotate', { duration: 0.8, ease: 'power3' })
+  let current = -1
+  let lastUser = 0
+  let lastX = 0
+
+  const show = (i: number) => {
+    if (i === current) return
+    rows[current]?.classList.remove('is-active')
+    current = i
+    if (i < 0) {
+      gsap.to(preview, { autoAlpha: 0, scale: 0.85, duration: 0.35 })
+      return
+    }
+    const row = rows[i]
+    row.classList.add('is-active')
+    imgs.forEach((img) => (img.src = row.dataset.src!))
+    label.textContent = `${row.children[0].textContent} / ${row.children[1].textContent}`
+    gsap.to(preview, {
+      autoAlpha: 1,
+      scale: 1,
+      duration: 0.45,
+      ease: 'expo.out',
+    })
+    gsap.fromTo(
+      [layerA, layerB],
+      { x: (k) => (k ? -24 : 24) },
+      { x: (k) => (k ? -4 : 4), duration: 0.6, ease: 'expo.out' },
+    )
+  }
+
+  const move = (x: number, y: number) => {
+    const r = section.getBoundingClientRect()
+    px(x - r.left)
+    py(y - r.top)
+    rot(gsap.utils.clamp(-12, 12, (x - lastX) * 0.6))
+    lastX = x
+  }
+
+  rows.forEach((row, i) => {
+    row.addEventListener('pointerenter', () => show(i))
+  })
+  section
+    .querySelector('.stages__table')!
+    .addEventListener('pointerleave', () => show(-1))
+  section.addEventListener('pointermove', (e) => {
+    lastUser = performance.now()
+    move(e.clientX, e.clientY)
+  })
+
+  // showreel: highlight rows in turn, preview floats to the right of the row
+  let inView = false
+  new IntersectionObserver(([e]) => (inView = e.isIntersecting), {
+    threshold: 0.4,
+  }).observe(section.querySelector('.stages__table')!)
+  let step = 0
+  setInterval(() => {
+    if (!inView || (!reelMode && performance.now() - lastUser < 3000)) return
+    const i = step++ % rows.length
+    show(i)
+    const r = rows[i].getBoundingClientRect()
+    move(r.left + r.width * 0.62, r.top + r.height / 2)
+  }, 1500)
+
+  // giant title slides with scroll
+  gsap.fromTo(
+    '.stages__big',
+    { xPercent: 0 },
+    {
+      xPercent: -38,
+      ease: 'none',
+      scrollTrigger: {
+        trigger: section,
+        start: 'top bottom',
+        end: 'bottom top',
+        scrub: true,
+      },
+    },
+  )
+
+  gsap.from(rows, {
+    autoAlpha: 0,
+    y: 30,
+    duration: 1,
+    ease: 'expo.out',
+    stagger: 0.08,
+    scrollTrigger: { trigger: '.stages__table', start: 'top 80%' },
+  })
+  gsap.from(section.querySelectorAll('.stages__row'), {
+    '--rule': 0,
+    duration: 1.2,
+    ease: 'expo.inOut',
+    stagger: 0.08,
+    scrollTrigger: { trigger: '.stages__table', start: 'top 85%' },
+  })
+</script>
+
+<style lang="scss">
+  .sr-only {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip: rect(0 0 0 0);
+  }
+
+  .stages {
+    padding-top: rem(40);
+    padding-bottom: rem(180);
+    overflow: hidden;
+    z-index: 1;
+  }
+
+  .stages__marquee {
+    margin: 0 calc(var(--gutter) * -1);
+    white-space: nowrap;
+    pointer-events: none;
+  }
+
+  .stages__big {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.12em;
+    font-size: rem(300);
+    color: var(--ink);
+    padding-left: rem(20);
+
+    :global(.glyph) {
+      font-size: 0.5em;
+      color: var(--red);
+      stroke-width: 2;
+    }
+
+    @include mobile {
+      font-size: rem(110);
+    }
+  }
+
+  .stages__head {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin: rem(40) 0 rem(24);
+
+    @include mobile {
+      flex-direction: column;
+      align-items: flex-start;
+      gap: rem(10);
+    }
+  }
+
+  .stages__meta {
+    display: flex;
+    align-items: center;
+    gap: rem(20);
+  }
+
+  .stages__globe {
+    font-size: rem(22);
+    color: var(--red);
+    animation: spin 14s linear infinite;
+  }
+
+  @keyframes spin {
+    to {
+      transform: rotateY(360deg);
+    }
+  }
+
+  .stages__table {
+    position: relative;
+    z-index: 2;
+  }
+
+  .stages__row {
+    --rule: 1;
+    position: relative;
+    display: grid;
+    grid-template-columns: rem(120) 1.4fr 1fr rem(200);
+    align-items: center;
+    gap: rem(20);
+    padding: rem(26) rem(16);
+    transition:
+      color 0.35s,
+      padding 0.5s var(--ease-out);
+
+    &::before {
+      content: '';
+      position: absolute;
+      left: 0;
+      right: 0;
+      top: 0;
+      height: 1px;
+      background: var(--line);
+      transform: scaleX(var(--rule));
+      transform-origin: left;
+    }
+
+    &::after {
+      content: '';
+      position: absolute;
+      inset: 0;
+      z-index: -1;
+      background: var(--red);
+      clip-path: inset(50% 0 50% 0);
+      transition: clip-path 0.5s var(--ease-out);
+    }
+
+    &.is-active::after {
+      clip-path: inset(0 0 0 0);
+    }
+
+    &.is-active {
+      color: var(--black);
+      padding-left: rem(32);
+    }
+
+    &--head {
+      padding-top: rem(12);
+      padding-bottom: rem(12);
+    }
+
+    &:last-child {
+      border-bottom: 1px solid var(--line);
+    }
+
+    @include mobile {
+      grid-template-columns: rem(36) 1fr rem(80);
+      gap: rem(10);
+      padding: rem(18) rem(6);
+
+      .stages__sound,
+      &--head span:nth-child(3) {
+        display: none;
+      }
+    }
+  }
+
+  .stages__name {
+    font-family: var(--font-display);
+    font-weight: 800;
+    font-stretch: 125%;
+    font-size: rem(44);
+    line-height: 1;
+    letter-spacing: -0.01em;
+
+    @include mobile {
+      font-size: rem(20);
+    }
+  }
+
+  .stages__sound {
+    font-size: rem(16);
+  }
+
+  .stages__cap {
+    display: flex;
+    justify-content: flex-end;
+    align-items: center;
+    gap: rem(14);
+  }
+
+  .stages__arrow {
+    font-size: rem(18);
+    transition: transform 0.5s var(--ease-out);
+
+    .is-active & {
+      transform: rotate(45deg);
+    }
+  }
+
+  .stages__preview {
+    position: absolute;
+    left: 0;
+    top: 0;
+    z-index: 3;
+    width: rem(340);
+    height: rem(420);
+    margin: rem(-210) 0 0 rem(-170);
+    pointer-events: none;
+    opacity: 0;
+    visibility: hidden;
+    transform: scale(0.85);
+
+    @include mobile {
+      width: rem(160);
+      height: rem(200);
+      margin: rem(-100) 0 0 rem(-80);
+    }
+  }
+
+  .stages__layer {
+    position: absolute;
+    inset: 0;
+    overflow: hidden;
+
+    img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+    }
+
+    &--a,
+    &--b {
+      mix-blend-mode: screen;
+      opacity: 0.75;
+
+      img {
+        filter: grayscale(1) contrast(1.4);
+      }
+    }
+
+    &--a {
+      background: var(--pink);
+
+      img {
+        mix-blend-mode: multiply;
+      }
+    }
+
+    &--b {
+      background: var(--orange);
+
+      img {
+        mix-blend-mode: multiply;
+      }
+    }
+  }
+
+  .stages__preview-label {
+    position: absolute;
+    left: 0;
+    bottom: rem(-26);
+    color: var(--ink);
+  }
+</style>

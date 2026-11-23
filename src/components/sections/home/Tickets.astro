@@ -1,0 +1,504 @@
+---
+import { Image } from 'astro:assets'
+import Glyph from '@/components/atoms/Glyph/Glyph.astro'
+import ticketsBlur from '@/assets/images/tickets-blur.jpg'
+import { tickets, footer, hero } from '@/data/content'
+---
+
+<section class="tickets section" id="tickets" data-bg="1">
+  <div class="tickets__bg mono-photo" aria-hidden="true">
+    <Image src={ticketsBlur} alt="" widths={[900, 1600, 1800]} sizes="100vw" />
+  </div>
+
+  <div class="tickets__head">
+    <span class="mono">{tickets.label}</span>
+    <h2 class="h-l tickets__title">{tickets.title}</h2>
+  </div>
+
+  <div class="tickets__list">
+    {tickets.items.map((t, i) => (
+      <article class:list={['ticket', `ticket--${t.tone}`]} data-index={i}>
+        <div class="ticket__body">
+          <div class="ticket__icons">
+            <Glyph name="globe" />
+            <Glyph name="star" />
+          </div>
+          <div class="ticket__main">
+            <span class="mono ticket__no">0{i + 1} / 03</span>
+            <h3 class="ticket__name">{t.name}</h3>
+          </div>
+          <ul class="ticket__lines mono">
+            {t.lines.map((l) => (
+              <li>{l}</li>
+            ))}
+          </ul>
+          <div class="ticket__price">{t.price}</div>
+        </div>
+        <div class="ticket__stub">
+          <span class="mono ticket__code">{t.code}</span>
+          <button class="ticket__btn mono" type="button" data-cursor="Tear">
+            {tickets.cta}
+            <Glyph name="arrow" />
+          </button>
+        </div>
+      </article>
+    ))}
+  </div>
+
+  <footer class="footer">
+    <div class="footer__top">
+      <p class="h-m footer__line">{footer.line}</p>
+      <ul class="footer__socials mono">
+        {footer.socials.map((s) => (
+          <li>
+            <a href="#top">{s}</a>
+          </li>
+        ))}
+      </ul>
+    </div>
+    <div class="footer__mark">
+      <canvas class="footer__canvas" data-wordmark={hero.wordmark}></canvas>
+    </div>
+    <div class="footer__bottom mono text-muted">
+      <span>{footer.copy}</span>
+      <span>
+        {hero.dates} · {hero.place}
+      </span>
+      <a href="#top" class="footer__up">
+        Back to top <Glyph name="arrow" />
+      </a>
+    </div>
+  </footer>
+</section>
+
+<script>
+  import { gsap } from '@/scripts/gsap'
+  import { createWordmark } from '@/scripts/wordmark'
+
+  const section = document.querySelector<HTMLElement>('.tickets')!
+  const cards = [...section.querySelectorAll<HTMLElement>('.ticket')]
+  const rest = [-2.5, 1.8, -1.2]
+
+  cards.forEach((card, i) => {
+    const from = i % 2 === 0 ? -1 : 1
+    gsap.fromTo(
+      card,
+      { xPercent: from * 70, rotate: from * 14, autoAlpha: 0 },
+      {
+        xPercent: 0,
+        rotate: rest[i],
+        autoAlpha: 1,
+        ease: 'power3.out',
+        scrollTrigger: {
+          trigger: card,
+          start: 'top 98%',
+          end: 'top 55%',
+          scrub: 0.8,
+        },
+      },
+    )
+
+    card.addEventListener('pointerenter', () => {
+      card.classList.remove('is-glitch')
+      void card.offsetWidth
+      card.classList.add('is-glitch')
+    })
+
+    const stub = card.querySelector<HTMLElement>('.ticket__stub')!
+    card.querySelector('.ticket__btn')!.addEventListener('click', () => {
+      gsap
+        .timeline()
+        .to(stub, {
+          rotate: 9,
+          x: 30,
+          y: 40,
+          duration: 0.5,
+          ease: 'back.out(2)',
+          transformOrigin: '0% 0%',
+        })
+        .to(stub, {
+          y: 260,
+          rotate: 24,
+          autoAlpha: 0,
+          duration: 0.7,
+          ease: 'power2.in',
+        })
+        .set(stub, { clearProps: 'all' }, '+=0.8')
+        .from(stub, { autoAlpha: 0, duration: 0.4 })
+    })
+  })
+
+  gsap.fromTo(
+    '.tickets__bg img',
+    { yPercent: -10, scale: 1.15 },
+    {
+      yPercent: 10,
+      ease: 'none',
+      scrollTrigger: {
+        trigger: section,
+        start: 'top bottom',
+        end: 'bottom bottom',
+        scrub: true,
+      },
+    },
+  )
+
+  const canvas = section.querySelector<HTMLCanvasElement>('.footer__canvas')!
+  const mark = createWordmark(canvas, canvas.dataset.wordmark!, {})
+  if (mark) {
+    gsap.to(mark.state, {
+      intro: 1,
+      duration: 2,
+      ease: 'power3.out',
+      scrollTrigger: { trigger: canvas, start: 'top 95%' },
+    })
+  }
+  gsap.from('.footer__line', {
+    fontVariationSettings: "'wdth' 62",
+    autoAlpha: 0,
+    duration: 1.2,
+    ease: 'expo.out',
+    scrollTrigger: { trigger: '.footer', start: 'top 85%' },
+  })
+</script>
+
+<style lang="scss">
+  .tickets {
+    padding-top: rem(160);
+    overflow: hidden;
+    z-index: 1;
+  }
+
+  .tickets__bg {
+    position: absolute;
+    inset: 0 0 rem(520) 0;
+    z-index: -1;
+    overflow: hidden;
+    opacity: 0.55;
+    -webkit-mask-image: linear-gradient(
+      to bottom,
+      transparent,
+      #000 18%,
+      #000 70%,
+      transparent
+    );
+    mask-image: linear-gradient(
+      to bottom,
+      transparent,
+      #000 18%,
+      #000 70%,
+      transparent
+    );
+
+    :global(img) {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+    }
+  }
+
+  .tickets__head {
+    display: flex;
+    flex-direction: column;
+    gap: rem(16);
+    margin-bottom: rem(60);
+  }
+
+  .tickets__title {
+    font-variation-settings: 'wdth' 125;
+  }
+
+  .tickets__list {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: rem(28);
+    padding-bottom: rem(200);
+  }
+
+  .ticket {
+    --tbg: var(--red);
+    --tfg: var(--black);
+    --hole: var(--bg);
+    position: relative;
+    display: grid;
+    grid-template-columns: 1fr rem(230);
+    width: rem(980);
+    background: var(--tbg);
+    color: var(--tfg);
+    box-shadow: 0 rem(30) rem(60) rgba(0, 0, 0, 0.5);
+    transition: translate 0.5s var(--ease-out);
+
+    &:nth-child(1) {
+      margin-right: rem(220);
+    }
+
+    &:nth-child(2) {
+      margin-left: rem(260);
+    }
+
+    &:nth-child(3) {
+      margin-right: rem(80);
+    }
+
+    &--black {
+      --tbg: var(--black);
+      --tfg: var(--ink);
+      outline: 1px solid rgba(242, 239, 234, 0.2);
+    }
+
+    &--white {
+      --tbg: var(--ink);
+      --tfg: var(--black);
+    }
+
+    &:hover {
+      translate: 0 rem(-10);
+    }
+
+    &.is-glitch .ticket__body {
+      animation: tglitch 0.4s steps(1) both;
+    }
+
+    @include mobile {
+      width: 100%;
+      grid-template-columns: 1fr;
+      margin: 0 !important;
+    }
+  }
+
+  @keyframes tglitch {
+    0% {
+      clip-path: inset(0 0 60% 0);
+      transform: translateX(rem(-10));
+    }
+    25% {
+      clip-path: inset(40% 0 20% 0);
+      transform: translateX(rem(8));
+    }
+    50% {
+      clip-path: inset(70% 0 0 0);
+      transform: translateX(rem(-4));
+    }
+    75% {
+      clip-path: inset(0 0 0 0);
+      transform: translateX(rem(3));
+    }
+    100% {
+      clip-path: none;
+      transform: none;
+    }
+  }
+
+  .ticket__body {
+    display: grid;
+    grid-template-columns: auto 1fr auto auto;
+    align-items: center;
+    gap: rem(34);
+    padding: rem(28) rem(34);
+
+    @include mobile {
+      grid-template-columns: auto 1fr;
+      gap: rem(14);
+      padding: rem(18);
+    }
+  }
+
+  .ticket__icons {
+    display: flex;
+    gap: rem(10);
+    font-size: rem(56);
+
+    :global(.glyph) {
+      stroke-width: 3.5;
+    }
+
+    @include mobile {
+      font-size: rem(30);
+    }
+  }
+
+  .ticket__main {
+    display: flex;
+    flex-direction: column;
+    gap: rem(8);
+  }
+
+  .ticket__name {
+    font-family: var(--font-display);
+    font-weight: 800;
+    font-stretch: 125%;
+    font-size: rem(40);
+    line-height: 0.95;
+    text-transform: uppercase;
+
+    @include mobile {
+      font-size: rem(22);
+    }
+  }
+
+  .ticket__lines {
+    list-style: none;
+    padding: 0;
+    display: flex;
+    flex-direction: column;
+    gap: rem(4);
+
+    @include mobile {
+      grid-column: 1 / -1;
+    }
+  }
+
+  .ticket__price {
+    font-family: var(--font-display);
+    font-weight: 800;
+    font-stretch: 125%;
+    font-size: rem(48);
+    line-height: 1;
+
+    @include mobile {
+      font-size: rem(28);
+    }
+  }
+
+  .ticket__stub {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    gap: rem(16);
+    padding: rem(28) rem(26);
+    background: var(--tbg);
+    border-left: 2px dashed currentColor;
+
+    &::before,
+    &::after {
+      content: '';
+      position: absolute;
+      left: rem(-13);
+      width: rem(24);
+      height: rem(24);
+      border-radius: 50%;
+      background: var(--hole);
+    }
+
+    &::before {
+      top: rem(-12);
+    }
+
+    &::after {
+      bottom: rem(-12);
+    }
+
+    @include mobile {
+      border-left: 0;
+      border-top: 2px dashed currentColor;
+      flex-direction: row;
+      align-items: center;
+      padding: rem(16) rem(18);
+
+      &::before,
+      &::after {
+        display: none;
+      }
+    }
+  }
+
+  .ticket__btn {
+    display: inline-flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: rem(10);
+    padding: rem(14) rem(16);
+    background: var(--tfg);
+    color: var(--tbg);
+    transition: opacity 0.3s;
+
+    &:hover {
+      opacity: 0.85;
+    }
+  }
+
+  .footer {
+    position: relative;
+    padding-bottom: rem(28);
+  }
+
+  .footer__top {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-end;
+    padding-top: rem(40);
+    border-top: 1px solid var(--line);
+
+    @include mobile {
+      flex-direction: column;
+      align-items: flex-start;
+      gap: rem(20);
+    }
+  }
+
+  .footer__line {
+    font-size: rem(48);
+    font-variation-settings: 'wdth' 125;
+
+    @include mobile {
+      font-size: rem(26);
+    }
+  }
+
+  .footer__socials {
+    list-style: none;
+    padding: 0;
+    display: flex;
+    gap: rem(28);
+
+    a:hover {
+      color: var(--red);
+    }
+
+    @include mobile {
+      flex-wrap: wrap;
+      gap: rem(14);
+    }
+  }
+
+  .footer__mark {
+    margin: rem(30) calc(var(--gutter) * -0.5) rem(10);
+  }
+
+  .footer__canvas {
+    display: block;
+    width: 100%;
+    height: rem(300);
+
+    @include mobile {
+      height: rem(96);
+    }
+  }
+
+  .footer__bottom {
+    display: flex;
+    justify-content: space-between;
+    gap: rem(20);
+
+    @include mobile {
+      flex-direction: column;
+      gap: rem(8);
+    }
+  }
+
+  .footer__up {
+    display: inline-flex;
+    align-items: center;
+    gap: rem(6);
+
+    :global(.glyph) {
+      transform: rotate(-45deg);
+    }
+
+    &:hover {
+      color: var(--ink);
+    }
+  }
+</style>

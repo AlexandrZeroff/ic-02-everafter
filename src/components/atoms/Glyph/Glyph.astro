@@ -1,0 +1,48 @@
+---
+type Props = {
+  name: 'star' | 'globe' | 'cross' | 'arrow' | 'arrow-down'
+  class?: string
+}
+
+const { name, class: className } = Astro.props
+---
+
+<svg
+  class:list={['glyph', `glyph--${name}`, className]}
+  viewBox="0 0 48 48"
+  fill="none"
+  stroke="currentColor"
+  stroke-width="3"
+  aria-hidden="true"
+>
+  {name === 'star' && (
+    <g stroke-linecap="square">
+      <path d="M24 4v40M4 24h40M9.9 9.9l28.2 28.2M38.1 9.9 9.9 38.1" />
+    </g>
+  )}
+  {name === 'globe' && (
+    <g>
+      <ellipse cx="24" cy="24" rx="20" ry="14" />
+      <ellipse cx="24" cy="24" rx="8" ry="14" />
+      <path d="M4 24h40M24 10v28M8 16h32M8 32h32" />
+    </g>
+  )}
+  {name === 'cross' && (
+    <path d="M8 8l32 32M40 8 8 40" stroke-linecap="square" />
+  )}
+  {name === 'arrow' && (
+    <path d="M12 36 36 12M16 12h20v20" stroke-linecap="square" />
+  )}
+  {name === 'arrow-down' && (
+    <path d="M24 6v34M12 28l12 12 12-12" stroke-linecap="square" />
+  )}
+</svg>
+
+<style lang="scss">
+  .glyph {
+    display: inline-block;
+    width: 1em;
+    height: 1em;
+    flex: none;
+  }
+</style>
